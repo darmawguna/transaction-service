@@ -1,4 +1,5 @@
 from helper.db_helper import get_connection
+from datetime import datetime
 
 def calculate_user_summary(user_id) : 
     """
@@ -30,6 +31,10 @@ def calculate_user_summary(user_id) :
                 "total_amount": 0.0,
                 "last_date_transaction": None
             }
+            
+        # Konversi datetime ke string sebelum mengirim ke Redpanda
+        if isinstance(result['last_date_transaction'], datetime):
+            result['last_date_transaction'] = result['last_date_transaction'].strftime('%Y-%m-%d %H:%M:%S')
 
         return result
     except Exception as e:

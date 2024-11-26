@@ -1,13 +1,11 @@
-"""Routes for transactions module"""
 import os
 from flask import Blueprint, jsonify, request
 from helper.db_helper import get_connection
 from helper.form_validation import get_form_data
 from datetime import datetime
 transactions_endpoints = Blueprint('transactions', __name__)
-from redpanda_helper import produce_event
-from transaction_summary import calculate_user_summary
-from redpanda_helper import send_user_summary
+from helper.transaction_summary import calculate_user_summary
+from helper.redpanda_helper import send_user_summary
 
 # Konstanta untuk format tanggal
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -45,18 +43,10 @@ def create():
     """Endpoint untuk membuat transaksi baru"""
     # Validasi input dari form
     try:
-        required = get_form_data(["status", "user_id", "amount", "transaction_date"])  
+        required = get_form_data(["status", "user_id", "amount"])  
         user_id = required["user_id"]
         amount = float(required["amount"])  # Pastikan amount berupa float
         status = required["status"]
-        transaction_date = required["transaction_date"]  # Tanggal transaksi
-        description = request.form.get('description', '')  # Deskripsi opsional
-        
-        # Validasi transaction_date
-        try:
-            transaction_date = datetime.strptime(transaction_date, DATE_FORMAT)
-        except ValueError:
-            return jsonify({"message": f"Invalid date format. Use {DATE_FORMAT}"}), 400
 
         # Validasi nilai amount
         if amount <= 0:
@@ -74,28 +64,24 @@ def create():
 
         # Query untuk memasukkan transaksi baru
         insert_query = """
-        INSERT INTO transaction (user_id, amount, transaction_date, status, description)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO transaction (user_id, amount, status)
+        VALUES (%s, %s, %s)
         """
-        request_insert = (user_id, amount, transaction_date, status, description)
+        request_insert = (user_id, amount, status)
         cursor.execute(insert_query, request_insert)
         connection.commit()
         new_id = cursor.lastrowid
-        
         
         # Jika status success, hitung dan kirim summary ke Redpanda
         if status == "success":
             summary_data = calculate_user_summary(user_id)
             send_user_summary("user_summary", summary_data)
 
-
         return jsonify({
             "transaction_id": new_id,
             "user_id": user_id,
             "amount": amount,
-            "transaction_date": transaction_date.strftime(DATE_FORMAT),
             "status": status,
-            "description": description,
             "message": "Transaction successfully created"
         }), 201
 
@@ -112,42 +98,44 @@ def create():
 
 @transactions_endpoints.route('/update/<int:transaction_id>', methods=['PUT'])
 def update(transaction_id):
+    """Endpoint untuk memperbarui transaksi"""
     connection = None
     cursor = None
-    connection = get_connection()
-    cursor = connection.cursor()
-        # Periksa apakah transaksi ada
-    cursor.execute("SELECT user_id FROM transaction WHERE transaction_id = %s", (transaction_id,))
-    result = cursor.fetchone()
-    if not result:
-        return jsonify({"message": "Transaction not found"}), 404
-
-    # Dapatkan user_id dari hasil query
-    user_id = result[0]
-    
-    """ Edit Data Transaksi"""
     try:
+        connection = get_connection()
+        cursor = connection.cursor()
+
+        # Periksa apakah transaksi ada
+        cursor.execute("SELECT status, user_id FROM transaction WHERE transaction_id = %s", (transaction_id,))
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({"message": "Transaction not found"}), 404
+
+        # Periksa status transaksi
+        if result['status'] in ['success', 'canceled']:
+            return jsonify({"message": f"Transaction cannot be updated. Current status: {result['status']}"}), 400
+
+        # Dapatkan user_id dari transaksi
+        user_id = result['user_id']
+        
+        # Validasi input status baru
         required = get_form_data(["status"])
         status = required["status"]
         valid_statuses = ['pending', 'success', 'failed', 'canceled']
         if status not in valid_statuses:
             return jsonify({"message": f"Invalid status. Must be one of {valid_statuses}"}), 400
 
-    except KeyError as e:
-        return jsonify({"message": f"Missing required field: {str(e)}"}), 400
-     # Memasukkan data ke database
-    
-    try:
-        # Query untuk memasukkan transaksi baru
-        insert_query = "UPDATE transaction SET status = %s WHERE transaction_id = %s"
-
-        request_insert = ( status, transaction_id )
-        cursor.execute(insert_query, request_insert)
+        # Update transaksi
+        update_query = "UPDATE transaction SET status = %s WHERE transaction_id = %s"
+        request_update = (status, transaction_id)
+        cursor.execute(update_query, request_update)
         connection.commit()
-        
+
+        # Jika status success, hitung dan kirim summary ke Redpanda
         if status == "success":
             summary_data = calculate_user_summary(user_id)
             send_user_summary("user_summary", summary_data)
+
         return jsonify({"message": "Transaction updated successfully"}), 200
 
     except Exception as e:
@@ -159,34 +147,33 @@ def update(transaction_id):
             cursor.close()
         if connection:  # Pastikan connection telah didefinisikan
             connection.close()
-        
+
 @transactions_endpoints.route('/cancel/<int:transaction_id>', methods=['POST'])
 def cancel_transaction(transaction_id):
+    """Endpoint untuk membatalkan transaksi"""
     connection = None
     cursor = None
     try:
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
 
-
-        # Query untuk memasukkan transaksi baru
-        insert_query =  "SELECT * FROM transaction WHERE transaction_id = %s"
-        cursor.execute(insert_query, (transaction_id,))
+        # Query untuk memeriksa transaksi
+        cursor.execute("SELECT status FROM transaction WHERE transaction_id = %s", (transaction_id,))
         transaction = cursor.fetchone()
-        
-        #validasi transaksi 
+
+        # Validasi transaksi
         if not transaction:
             return jsonify({"message": "Transaction not found"}), 404
         
-         # Validasi status transaksi
-        if transaction['status'] in ['completed', 'failed', 'canceled']:
+        # Validasi status transaksi
+        if transaction['status'] not in ['pending', 'failed']:
             return jsonify({"message": f"Transaction cannot be canceled. Current status: {transaction['status']}"}), 400
 
-                # Perbarui status transaksi menjadi canceled
+        # Perbarui status transaksi menjadi canceled
         update_query = "UPDATE transaction SET status = %s WHERE transaction_id = %s"
         cursor.execute(update_query, ('canceled', transaction_id))
         connection.commit()
-        
+
         return jsonify({
             "message": "Transaction successfully canceled",
             "transaction_id": transaction_id,
@@ -203,4 +190,3 @@ def cancel_transaction(transaction_id):
             cursor.close()
         if connection:  # Pastikan connection telah didefinisikan
             connection.close()
-        
