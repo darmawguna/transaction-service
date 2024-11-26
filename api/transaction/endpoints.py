@@ -2,13 +2,11 @@ import os
 from flask import Blueprint, jsonify, request
 from helper.db_helper import get_connection
 from helper.form_validation import get_form_data
-from datetime import datetime
 transactions_endpoints = Blueprint('transactions', __name__)
 from helper.transaction_summary import calculate_user_summary
 from helper.redpanda_helper import send_user_summary
 
 # Konstanta untuk format tanggal
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 @transactions_endpoints.route('/', methods=['GET'])
 def read():
@@ -75,6 +73,7 @@ def create():
         # Jika status success, hitung dan kirim summary ke Redpanda
         if status == "success":
             summary_data = calculate_user_summary(user_id)
+            print(summary_data)
             send_user_summary("user_summary", summary_data)
 
         return jsonify({
