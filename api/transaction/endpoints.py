@@ -5,6 +5,8 @@ from helper.form_validation import get_form_data
 transactions_endpoints = Blueprint('transactions', __name__)
 from helper.transaction_summary import calculate_user_summary
 from helper.redpanda_helper import send_user_summary
+import requests
+import msgpack
 
 # Konstanta untuk format tanggal
 
@@ -189,3 +191,24 @@ def cancel_transaction(transaction_id):
             cursor.close()
         if connection:  # Pastikan connection telah didefinisikan
             connection.close()
+
+
+# TODO buat fungsi yang akan mengirimkan data transaction summary ke user-service
+@transactions_endpoints.route('/get-summary-transaction/<int:user_id>', methods=['GET'])
+def get_summary_transaction(user_id):
+    """Endpoint untuk mengirimkan summary transaksi"""
+    url = f"http://127.0.0.1:5001/api/users/validate-user/{user_id}"  # API eksternal
+    try:
+        response = requests.get(url)  # Melakukan GET request
+        response.raise_for_status()  # Raise error jika status kode bukan 2xx
+        data = response.json()  # Parsing JSON response
+          # Kirimkan data sebagai response Flask
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+    if data.get("message") == "true" :
+        summary_data = calculate_user_summary(user_id)
+        packed_data = msgpack.packb(summary_data)
+        return packed_data, 200, {'Content-Type': 'application/msgpack'}
+    else : 
+        return jsonify({"message": "user not found"})
+        
