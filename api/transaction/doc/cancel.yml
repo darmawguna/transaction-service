@@ -1,0 +1,53 @@
+tags:
+  - Transactions
+summary: Endpoint untuk membatalkan transaksi
+description: >
+  Endpoint ini digunakan untuk membatalkan transaksi yang statusnya "pending" atau "failed".
+parameters:
+  - name: transaction_id
+    in: path
+    required: true
+    type: integer
+    description: ID transaksi yang akan dibatalkan
+responses:
+  200:
+    description: Transaksi berhasil dibatalkan
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Transaction successfully canceled"
+        transaction_id:
+          type: integer
+          example: 1
+        previous_status:
+          type: string
+          example: "pending"
+        new_status:
+          type: string
+          example: "canceled"
+  400:
+    description: Transaksi tidak bisa dibatalkan karena statusnya tidak valid
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Transaction cannot be canceled"
+  404:
+    description: Transaksi tidak ditemukan
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Transaction not found"
+  500:
+    description: Terjadi kesalahan pada server
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Error inserting data"

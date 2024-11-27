@@ -1,0 +1,47 @@
+tags:
+  - Transactions
+summary: Endpoint untuk membaca daftar transaksi
+description: >
+  Endpoint ini digunakan untuk mendapatkan daftar transaksi dari database.
+  Tidak memerlukan parameter dan mengembalikan seluruh transaksi yang ada.
+produces:
+  - application/json
+responses:
+  200:
+    description: Daftar transaksi berhasil diambil
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "OK"
+        datas:
+          type: array
+          items:
+            type: object
+            properties:
+              transaction_id:
+                type: integer
+                example: 1
+              user_id:
+                type: integer
+                example: 123
+              amount:
+                type: number
+                format: float
+                example: 150.0
+              status:
+                type: string
+                example: "success"
+              created_at:
+                type: string
+                format: date-time
+                example: "2024-11-26T22:56:39"
+  500:
+    description: Terjadi kesalahan pada server
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Error fetching data"

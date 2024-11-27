@@ -1,0 +1,55 @@
+tags:
+  - Transactions
+summary: Endpoint untuk memperbarui transaksi
+description: >
+  Endpoint ini digunakan untuk memperbarui status transaksi. Anda hanya bisa memperbarui status transaksi yang belum diproses atau gagal.
+parameters:
+  - name: transaction_id
+    in: path
+    required: true
+    type: integer
+    description: ID transaksi yang akan diperbarui
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+      required:
+        - status
+responses:
+  200:
+    description: Transaksi berhasil diperbarui
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Transaction updated successfully"
+  400:
+    description: Status transaksi tidak valid atau tidak dapat diperbarui
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Transaction cannot be updated"
+  404:
+    description: Transaksi tidak ditemukan
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Transaction not found"
+  500:
+    description: Terjadi kesalahan pada server
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Error inserting data"

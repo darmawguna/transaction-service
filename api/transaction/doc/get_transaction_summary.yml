@@ -1,0 +1,56 @@
+tags:
+  - Transactions
+summary: Endpoint untuk mendapatkan ringkasan transaksi pengguna
+description: >
+  Endpoint ini digunakan untuk mendapatkan ringkasan transaksi pengguna. 
+  Ringkasan akan mengirimkan informasi jumlah transaksi, total amount, dan waktu transaksi terakhir.
+parameters:
+  - name: user_id
+    in: path
+    required: true
+    type: integer
+    description: ID pengguna untuk mendapatkan ringkasan transaksi
+responses:
+  200:
+    description: Ringkasan transaksi berhasil diambil
+    content:
+      application/msgpack:
+        schema:
+          type: string
+          format: byte
+    examples:
+      application/msgpack:
+        value: |
+          {
+            "data": {
+              "amount_transaction": 3,
+              "last_date_transaction": "2024-11-26 22:56:39",
+              "total_amount": 17000.0,
+              "user_id": 1
+            },
+            "message": "success get transaction Summary"
+          }
+  400:
+    description: Konten tidak sesuai atau kesalahan dalam respons
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Unexpected content type"
+  500:
+    description: Terjadi kesalahan saat menghubungi API eksternal
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Error while contacting external API"
+  504:
+    description: Permintaan melebihi batas waktu
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Request timeout"
