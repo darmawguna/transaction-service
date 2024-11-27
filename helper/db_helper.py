@@ -15,7 +15,7 @@ db_pool = MySQLConnectionPool(
     port=3307,
     password=DB_PASSWORD,
     database=DB_NAME,
-    pool_size=POOL_SIZE,  # define pool size connection
+    pool_size=POOL_SIZE,  
     pool_name=DB_POOLNAME
 )
 
