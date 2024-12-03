@@ -72,13 +72,10 @@ def create():
         cursor.execute(insert_query, request_insert)
         connection.commit()
         new_id = cursor.lastrowid
-        
-        
         if status == "success":
             summary_data = calculate_user_summary(user_id)
             print(summary_data)
             send_user_summary("user_summary", summary_data)
-
         return jsonify({
             "transaction_id": new_id,
             "user_id": user_id,
