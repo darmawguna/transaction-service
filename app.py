@@ -19,5 +19,5 @@ app.register_blueprint(transactions_endpoints, url_prefix='/api/transactions')
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
 

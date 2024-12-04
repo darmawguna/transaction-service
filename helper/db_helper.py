@@ -8,11 +8,13 @@ DB_USER = os.environ.get('DB_USER')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_POOLNAME = os.environ.get('DB_POOLNAME')
 POOL_SIZE = int(os.environ.get('POOL_SIZE'))
+PORT = int(os.environ.get('PORT'))
+
 
 db_pool = MySQLConnectionPool(
     host=DB_HOST,
     user=DB_USER,
-    port=3307,
+    port=PORT,
     password=DB_PASSWORD,
     database=DB_NAME,
     pool_size=POOL_SIZE,  
