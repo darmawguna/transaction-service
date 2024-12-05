@@ -2,13 +2,13 @@
 import os
 from mysql.connector.pooling import MySQLConnectionPool
 
-DB_HOST = os.environ.get('DB_HOST')
-DB_NAME = os.environ.get('DB_NAME')
-DB_USER = os.environ.get('DB_USER')
-DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_POOLNAME = os.environ.get('DB_POOLNAME')
-POOL_SIZE = int(os.environ.get('POOL_SIZE'))
-PORT = int(os.environ.get('PORT'))
+DB_HOST = os.environ.get('DB_HOST', 'localhost').strip()
+DB_NAME = os.environ.get('DB_NAME', 'db_transaction').strip()
+DB_USER = os.environ.get('DB_USER', 'root').strip()
+DB_PASSWORD = os.environ.get('DB_PASSWORD', 'transaction').strip()
+DB_POOLNAME = os.environ.get('DB_POOLNAME', 'transaction_pool').strip()
+POOL_SIZE = int(os.environ.get('POOL_SIZE', '5').strip())
+PORT = int(os.environ.get('PORT', '3307').strip())
 
 
 db_pool = MySQLConnectionPool(

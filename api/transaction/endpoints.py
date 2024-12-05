@@ -8,6 +8,7 @@ from helper.transaction_summary import calculate_user_summary
 from helper.redpanda_helper import send_user_summary
 import requests
 import msgpack
+from urllib.parse import quote
 
 
 @transactions_endpoints.route('/', methods=['GET'])
@@ -42,12 +43,15 @@ def read():
 @swag_from('./doc/create_data.yml')
 def create():
     """Endpoint untuk membuat transaksi baru"""
-    
     try:
-        required = get_form_data(["status", "user_id", "amount"])  
-        user_id = required["user_id"]
+        # Mengambil data dari form body
+        required = get_form_data(["status", "user_id", "amount"])
+        user_id = required["user_id"]  # Pastikan mengambil user_id dari form
+        user_id = quote(str(user_id))  # Encode user_id untuk URL
         amount = float(required["amount"])  # Pastikan amount berupa float
         status = required["status"]
+
+        url = f"http://127.0.0.1:5001/api/users/validate-user/{user_id}"
 
         # Validasi nilai amount
         if amount <= 0:
@@ -55,6 +59,20 @@ def create():
 
     except KeyError as e:
         return jsonify({"message": f"Missing required field: {str(e)}"}), 400
+    except ValueError:
+        return jsonify({"message": "Invalid data format for 'amount'"}), 400
+
+    # Validasi user dengan API eksternal
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+        if not data.get("message") == "true":
+            return jsonify({"message": "User not found"}), 404
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"message": f"Error validating user: {str(e)}"}), 500
 
     # Memasukkan data ke database
     connection = None
@@ -63,7 +81,6 @@ def create():
         connection = get_connection()
         cursor = connection.cursor(dictionary=True)
 
-        
         insert_query = """
         INSERT INTO transaction (user_id, amount, status)
         VALUES (%s, %s, %s)
@@ -72,10 +89,12 @@ def create():
         cursor.execute(insert_query, request_insert)
         connection.commit()
         new_id = cursor.lastrowid
+
+        # Kirim ringkasan user jika transaksi sukses
         if status == "success":
             summary_data = calculate_user_summary(user_id)
-            print(summary_data)
             send_user_summary("user_summary", summary_data)
+
         return jsonify({
             "transaction_id": new_id,
             "user_id": user_id,
@@ -90,10 +109,12 @@ def create():
         return jsonify({"message": f"Error inserting data: {str(e)}"}), 500
 
     finally:
-        if cursor:  
+        if cursor:
             cursor.close()
         if connection:
             connection.close()
+
+
 
 @transactions_endpoints.route('/update/<int:transaction_id>', methods=['PUT'])
 @swag_from('./doc/edit_data.yml')
