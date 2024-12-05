@@ -214,23 +214,5 @@ def cancel_transaction(transaction_id):
             connection.close()
 
 
-# TODO buat fungsi yang akan mengirimkan data transaction summary ke user-service
-@transactions_endpoints.route('/get-summary-transaction/<int:user_id>', methods=['GET'])
-@swag_from('./doc/get_transaction_summary.yml')
-def get_summary_transaction(user_id):
-    """Endpoint untuk mengirimkan summary transaksi"""
-    url = f"http://127.0.0.1:5001/api/users/validate-user/{user_id}"  
-    try:
-        response = requests.get(url)  
-        response.raise_for_status()  
-        data = response.json()  
-          
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-    if data.get("message") == "true" :
-        summary_data = calculate_user_summary(user_id)
-        packed_data = msgpack.packb(summary_data)
-        return packed_data, 200, {'Content-Type': 'application/msgpack'}
-    else : 
-        return jsonify({"message": "user not found"})
+
         
